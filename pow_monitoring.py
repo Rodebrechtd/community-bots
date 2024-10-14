@@ -66,6 +66,10 @@ def format_time_difference(seconds):
     remaining_seconds = seconds % 60  # Get the remaining seconds after the minutes
     return f"{int(minutes)} minutes and {int(remaining_seconds)} seconds"  # Return formatted string
 
+import sys
+
+# Existing imports here ...
+
 def monitor_transactions(contract_methods):
     """
     Monitors the latest transactions for multiple contract addresses and methods.
@@ -119,7 +123,9 @@ def monitor_transactions(contract_methods):
             send_discord_message(POW_MONITORING_WEBHOOK, final_message)
     
     except Exception as e:
-        print(f"An error occurred while monitoring transactions: {e}")
+        print(f"An error occurred: {e}")
+        sys.exit(1)  # Exit with a non-zero status to signal failure
+
 
 # If this script is run directly, call the monitor_transactions function
 if __name__ == "__main__":
