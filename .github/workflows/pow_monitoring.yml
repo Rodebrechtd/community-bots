@@ -1,15 +1,21 @@
 name: POW Monitoring
 
 on:
+  # Trigger on schedule (every 5 minutes past each hour)
   schedule:
-    - cron: '5 * * * *'  # Runs every 5 minutes past each hour
+    - cron: '5 * * * *'  
+
+  # Trigger on every push to any branch
+  push:
+    branches:
+      - '**'  # This will run on push to any branch
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - name: Build the Docker image and monitor POW address 
+    - name: Build the Docker image and monitor POW address
       env:
         POW_DISCORD_WEBHOOK: ${{ secrets.POW_DISCORD_WEBHOOK }}
         ARBISCAN_API_KEY: ${{ secrets.ARBISCAN_API_KEY }}

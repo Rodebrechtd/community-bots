@@ -26,19 +26,20 @@ def get_latest_transaction_time(contract_address: str, method_signature: str):
     Fetch the latest transaction timestamp and method from the Etherscan API for the given contract address and method.
     Returns the timestamp as a datetime object and method name if successful, or None if an error occurs.
     """
-    params = {
-        'module': 'account',
-        'action': 'txlist',
-        'address': contract_address,  # Dynamic contract address
-        'startblock': 0,  # Start from the first block
-        'endblock': 99999999,  # End at the latest block
-        'sort': 'desc',  # Sort transactions by newest first
-        'apikey': ARBISCAN_API_KEY
-    }
-    
-    response = requests.get(ARBISCAN_API_ENDPOINT, params=params)
-    
-    if response.status_code == 200:
+    try:
+        params = {
+            'module': 'account',
+            'action': 'txlist',
+            'address': contract_address,  # Dynamic contract address
+            'startblock': 0,  # Start from the first block
+            'endblock': 99999999,  # End at the latest block
+            'sort': 'desc',  # Sort transactions by newest first
+            'apikey': ARBISCAN_API_KEY
+        }
+        
+        response = requests.get(ARBISCAN_API_ENDPOINT, params=params)
+        response.raise_for_status()  # Raise an exception for bad HTTP status codes
+        
         data = response.json()
         
         if data['status'] == '1' and len(data['result']) > 0:
@@ -53,8 +54,8 @@ def get_latest_transaction_time(contract_address: str, method_signature: str):
         else:
             print(f"No transactions found for contract {contract_address}.")
             return None, None
-    else:
-        print("Error fetching data from Etherscan.")
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching data from Etherscan: {e}")
         return None, None
 
 def format_time_difference(seconds):
@@ -72,49 +73,53 @@ def monitor_transactions(contract_methods):
     
     :param contract_methods: A list of dictionaries, each containing 'contract_address' and 'method_signature'.
     """
-    # Initialize message parts
-    info_messages = []
-    
-    for contract in contract_methods:
-        contract_address = contract['contract_address']
-        method_signature = contract['method_signature']
-        method_name = contract.get('method_name', method_signature) 
-
-        # Get the timestamp and method of the latest transaction
-        latest_transaction_time, latest_method = get_latest_transaction_time(contract_address, method_signature)
+    try:
+        # Initialize message parts
+        info_messages = []
         
-        if latest_transaction_time is None or latest_method is None:  # Skip if no matching transaction
-            continue
-        
-        # Get the current time in UTC
-        current_time = datetime.now(timezone.utc)
-        
-        # Calculate the difference between the current time and the time of the last transaction
-        time_diff = current_time - latest_transaction_time
-        total_seconds_since_last_tx = time_diff.total_seconds()  # Get the difference in total seconds
+        for contract in contract_methods:
+            contract_address = contract['contract_address']
+            method_signature = contract['method_signature']
+            method_name = contract.get('method_name', method_signature) 
 
-        # Info message specific to this contract-method pair
-        info_message = f"Contract: [{contract_address}]({ARBISCAN_ADDRESS_URL}{contract_address}) \n Method: {method_signature}"
+            # Get the timestamp and method of the latest transaction
+            latest_transaction_time, latest_method = get_latest_transaction_time(contract_address, method_signature)
+            
+            if latest_transaction_time is None or latest_method is None:  # Skip if no matching transaction
+                continue
+            
+            # Get the current time in UTC
+            current_time = datetime.now(timezone.utc)
+            
+            # Calculate the difference between the current time and the time of the last transaction
+            time_diff = current_time - latest_transaction_time
+            total_seconds_since_last_tx = time_diff.total_seconds()  # Get the difference in total seconds
 
-        # Check thresholds and build appropriate messages
-        if total_seconds_since_last_tx > error_threshold_minutes * 60:
-            error_message = f"**ERROR**: Last transaction for __**{method_name}**__ was {format_time_difference(total_seconds_since_last_tx)} ago"
-            print(error_message)
-            info_messages.append(f"### 🔴 {error_message} \n {info_message} \n {discord_roles}")
-        elif total_seconds_since_last_tx > warning_threshold_minutes * 60:
-            warning_message = f"**WARNING**: Last transaction for __**{method_name}**__ was {format_time_difference(total_seconds_since_last_tx)} ago"
-            print(warning_message)
-            info_messages.append(f"### ⚠️ {warning_message} \n {info_message} \n {discord_roles}")
-        else:
-            ok_message = f"**OK**: Last transaction for __**{method_name}**__ was {format_time_difference(total_seconds_since_last_tx)} ago."
-            print(ok_message)
-            info_messages.append(f"### 🟢 {ok_message} \n {info_message}")
+            # Info message specific to this contract-method pair
+            info_message = f"Contract: [{contract_address}]({ARBISCAN_ADDRESS_URL}{contract_address}) \n Method: {method_signature}"
+
+            # Check thresholds and build appropriate messages
+            if total_seconds_since_last_tx > error_threshold_minutes * 60:
+                error_message = f"**ERROR**: Last transaction for __**{method_name}**__ was {format_time_difference(total_seconds_since_last_tx)} ago"
+                print(error_message)
+                info_messages.append(f"### 🔴 {error_message} \n {info_message} \n {discord_roles}")
+            elif total_seconds_since_last_tx > warning_threshold_minutes * 60:
+                warning_message = f"**WARNING**: Last transaction for __**{method_name}**__ was {format_time_difference(total_seconds_since_last_tx)} ago"
+                print(warning_message)
+                info_messages.append(f"### ⚠️ {warning_message} \n {info_message} \n {discord_roles}")
+            else:
+                ok_message = f"**OK**: Last transaction for __**{method_name}**__ was {format_time_difference(total_seconds_since_last_tx)} ago."
+                print(ok_message)
+                info_messages.append(f"### 🟢 {ok_message} \n {info_message}")
+        
+        # Combine all the messages into a single message to send to Discord
+        final_message = "\n\n".join(info_messages)
+        
+        if final_message:
+            send_discord_message(POW_MONITORING_WEBHOOK, final_message)
     
-    # Combine all the messages into a single message to send to Discord
-    final_message = "\n\n".join(info_messages)
-    
-    if final_message:
-        send_discord_message(POW_MONITORING_WEBHOOK, final_message)
+    except Exception as e:
+        print(f"An error occurred while monitoring transactions: {e}")
 
 # If this script is run directly, call the monitor_transactions function
 if __name__ == "__main__":
