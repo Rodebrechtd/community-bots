@@ -1,6 +1,8 @@
 import requests
 
 def send_discord_message(webhook_url, message):
+    if not webhook_url:
+        raise ValueError("Discord webhook URL is missing or invalid.")
     try:
         payload = {
             'content': message
