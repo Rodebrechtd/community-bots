@@ -48,4 +48,3 @@ def send_discord_message_with_local_image(webhook_url, message, image_path=None)
         print(f"An error occurred: {str(e)}")
     except FileNotFoundError:
         print(f"Image file '{image_path}' not found.")
-
