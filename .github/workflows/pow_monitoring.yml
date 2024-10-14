@@ -20,6 +20,7 @@ jobs:
         POW_DISCORD_WEBHOOK: ${{ secrets.POW_DISCORD_WEBHOOK }}
         ARBISCAN_API_KEY: ${{ secrets.ARBISCAN_API_KEY }}
       run: |
+        set -e  # Fail on any error
         docker compose run \
           --env POW_DISCORD_WEBHOOK=$POW_DISCORD_WEBHOOK \
           --env ARBISCAN_API_KEY=$ARBISCAN_API_KEY \
