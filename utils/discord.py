@@ -1,4 +1,5 @@
 import requests
+import sys
 
 def send_discord_message(webhook_url, message):
     if not webhook_url:
@@ -10,16 +11,16 @@ def send_discord_message(webhook_url, message):
         }
         response = requests.post(webhook_url, data=payload)
 
-        # Check for various response statuses
-        if response.status_code == 204:
-            print("Message sent successfully!")
-        elif response.status_code == 404 and response.json().get('code') == 10015:
-            print("Failed to send message: Unknown Webhook. The webhook may have been deleted or is incorrect.")
-        else:
+        # If the status code is anything other than success (204 for Discord), fail the job
+        if response.status_code != 204:
             print(f"Failed to send message: {response.status_code} - {response.text}")
+            sys.exit(1)  # Exit with error to fail the job
+        else:
+            print("Message sent successfully!")
     
     except requests.exceptions.RequestException as e:
         print(f"An error occurred: {str(e)}")
+        sys.exit(1)  # Exit with error to fail the job
 
 def send_discord_message_with_local_image(webhook_url, message, image_path=None):
     if not webhook_url:
@@ -36,15 +37,16 @@ def send_discord_message_with_local_image(webhook_url, message, image_path=None)
             }
             response = requests.post(webhook_url, files=files, data=payload)
 
-            # Check for successful or failed responses
-            if response.status_code == 200:
-                print("Message sent successfully!")
-            elif response.status_code == 404 and response.json().get('code') == 10015:
-                print("Failed to send message: Unknown Webhook. The webhook may have been deleted or is incorrect.")
-            else:
-                print(f"Failed to send message: {response.status_code} - {response.text}")
+        # If the status code is anything other than success (200 for file upload), fail the job
+        if response.status_code != 200:
+            print(f"Failed to send message: {response.status_code} - {response.text}")
+            sys.exit(1)  # Exit with error to fail the job
+        else:
+            print("Message with image sent successfully!")
     
     except requests.exceptions.RequestException as e:
         print(f"An error occurred: {str(e)}")
+        sys.exit(1)  # Exit with error to fail the job
     except FileNotFoundError:
         print(f"Image file '{image_path}' not found.")
+        sys.exit(1)  # Exit with error to fail the job
