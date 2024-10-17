@@ -1,14 +1,9 @@
 name: POW Monitoring
 
-on:
-  # Trigger on schedule (every 5 minutes past each hour)
-  schedule:
-    - cron: '5 * * * *'  
-
-  # Trigger on every push to any branch
-  push:
-    branches:
-      - '**'  # This will run on push to any branch
+# on:
+#   # Trigger on schedule (every 5 minutes past each hour)
+#   schedule:
+#     - cron: '5 * * * *'  
 
 jobs:
   build:
